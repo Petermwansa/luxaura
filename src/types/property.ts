@@ -7,6 +7,14 @@ export type PropertyType =
 
 export type ListingType = "For Sale" | "For Rent";
 
+export interface Agent {
+  name: string;
+  role: string;
+  phone: string;
+  email: string;
+  image: string;
+}
+
 export interface Property {
   id: string;
 
@@ -32,4 +40,6 @@ export interface Property {
   features: string[];
 
   featured?: boolean;
+
+  agent?: Agent;
 }
