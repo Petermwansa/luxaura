@@ -40,8 +40,6 @@ export default function PropertiesPage() {
     bedrooms: searchParams.get("bedrooms") ?? "",
   });
 
-
-
   const filteredProperties = useMemo(() => {
     let result = [...properties];
 
@@ -106,57 +104,46 @@ export default function PropertiesPage() {
     return result;
   }, [search, filters, sort]);
 
-
-
   useEffect(() => {
-  const params = new URLSearchParams();
+    const params = new URLSearchParams();
 
-  if (search) {
-    params.set("search", search);
-  }
+    if (search) {
+      params.set("search", search);
+    }
 
-  if (filters.listingType !== "All") {
-    params.set(
-      "listing",
-      filters.listingType
-    );
-  }
+    if (filters.listingType !== "All") {
+      params.set("listing", filters.listingType);
+    }
 
-  if (filters.propertyType !== "All") {
-    params.set(
-      "type",
-      filters.propertyType
-    );
-  }
+    if (filters.propertyType !== "All") {
+      params.set("type", filters.propertyType);
+    }
 
-  if (filters.minPrice) {
-    params.set("minPrice", filters.minPrice);
-  }
+    if (filters.minPrice) {
+      params.set("minPrice", filters.minPrice);
+    }
 
-  if (filters.maxPrice) {
-    params.set("maxPrice", filters.maxPrice);
-  }
+    if (filters.maxPrice) {
+      params.set("maxPrice", filters.maxPrice);
+    }
 
-  if (filters.bedrooms) {
-    params.set("bedrooms", filters.bedrooms);
-  }
+    if (filters.bedrooms) {
+      params.set("bedrooms", filters.bedrooms);
+    }
 
-  if (sort !== "featured") {
-    params.set("sort", sort);
-  }
+    if (sort !== "featured") {
+      params.set("sort", sort);
+    }
 
-  const query = params.toString();
+    const newQuery = params.toString();
+    const currentQuery = searchParams.toString();
 
-  router.replace(
-    query ? `/properties?${query}` : "/properties",
-    { scroll: false }
-  );
-}, [
-  search,
-  filters,
-  sort,
-  router,
-]);
+    if (newQuery !== currentQuery) {
+      router.replace(newQuery ? `/properties?${newQuery}` : "/properties", {
+        scroll: false,
+      });
+    }
+  }, [search, filters, sort, router, searchParams]);
 
   return (
     <>

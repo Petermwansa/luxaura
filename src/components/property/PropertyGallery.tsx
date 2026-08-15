@@ -67,7 +67,7 @@ export function PropertyGallery({
   return (
     <>
       <div className="space-y-3">
-        <div className="group relative aspect-[16/9] overflow-hidden rounded-2xl bg-black md:aspect-[16/8]">
+        <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-black sm:aspect-[16/9] md:aspect-[16/8]">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeImage}

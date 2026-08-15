@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Agent {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+
+  name      String
+  role      String
+  phone     String
+  email     String
+  image     String?
+
+  properties Property[]
+
+  enquiries Enquiry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Property {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  title       String
+  slug        String   @unique
+
+  location    String
+
+  type        PropertyType
+  listingType ListingType
+
+  price       Float
+  currency    String   @default("ZMW")
+
+  bedrooms    Int
+  bathrooms   Int
+  area        Float
+
+  yearBuilt   Int?
+
+  description String
+
+  images      String[]
+
+  features    String[]
+
+  featured    Boolean  @default(false)
+
+  agentId     String?  @db.ObjectId
+  agent       Agent?   @relation(fields: [agentId], references: [id])
+
+  enquiries   Enquiry[]
+
+  favorites   Favorite[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model User {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+
+  name      String
+  email     String     @unique
+  image     String?
+
+  favorites Favorite[]
+
+  enquiries Enquiry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Favorite {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  userId     String   @db.ObjectId
+  propertyId String   @db.ObjectId
+
+  user       User     @relation(fields: [userId], references: [id])
+  property   Property @relation(fields: [propertyId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, propertyId])
+}
+
+model Enquiry {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  name       String
+  email      String
+  phone      String
+
+  date       DateTime
+
+  message    String
+
+  propertyId String   @db.ObjectId
+  property   Property @relation(fields: [propertyId], references: [id])
+
+  agentId    String?  @db.ObjectId
+  agent      Agent?   @relation(fields: [agentId], references: [id])
+
+  userId     String?  @db.ObjectId
+  user       User?    @relation(fields: [userId], references: [id])
+
+  status     EnquiryStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum PropertyType {
+  APARTMENT
+  VILLA
+  HOUSE
+  COMMERCIAL
+  LAND
+}
+
+enum ListingType {
+  SALE
+  RENT
+}
+
+enum EnquiryStatus {
+  PENDING
+  CONTACTED
+  VIEWING_SCHEDULED
+  COMPLETED
+  CANCELLED
+}

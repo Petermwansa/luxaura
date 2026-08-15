@@ -11,3 +11,10 @@ MongoDB
 - clsx for conditional classes
 - Tailwind
 
+# Integration of the Backend to the app
+
+We now integrate the backend.
+We will use MongoDB together with prisma
+
+`npm install prisma @prisma/client`
+`npx prisma init`
