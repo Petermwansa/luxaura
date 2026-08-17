@@ -13,34 +13,36 @@ export function Hero() {
     "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c"
   );
 
-  useEffect(() => {
-    async function fetchHeroProperty() {
-      try {
-        const response = await fetch("/api/properties");
+  // ================== WE WILL NEED TO UPDATE THIS CODE TO FETCH THE IMAGE FROM THE DATABASE ====================== 
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch properties");
-        }
+  // useEffect(() => {
+  //   async function fetchHeroProperty() {
+  //     try {
+  //       const response = await fetch("/api/properties");
 
-        const properties = await response.json();
+  //       if (!response.ok) {
+  //         throw new Error("Failed to fetch properties");
+  //       }
 
-        const featuredProperty = properties.find(
-          (property: any) => property.featured === true
-        );
+  //       const properties = await response.json();
 
-        if (featuredProperty?.images?.length > 0) {
-          setHeroImage(featuredProperty.images[0]);
-        }
-      } catch (error) {
-        console.error(
-          "Failed to fetch hero property:",
-          error
-        );
-      }
-    }
+  //       const featuredProperty = properties.find(
+  //         (property: any) => property.featured === true
+  //       );
 
-    fetchHeroProperty();
-  }, []);
+  //       if (featuredProperty?.images?.length > 0) {
+  //         setHeroImage(featuredProperty.images[0]);
+  //       }
+  //     } catch (error) {
+  //       console.error(
+  //         "Failed to fetch hero property:",
+  //         error
+  //       );
+  //     }
+  //   }
+
+  //   fetchHeroProperty();
+  // }, []);
 
   return (
     <section className="relative min-h-screen overflow-hidden bg-black text-white">
