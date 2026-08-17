@@ -18,3 +18,7 @@ We will use MongoDB together with prisma
 
 `npm install prisma @prisma/client`
 `npx prisma init`
+
+# Seed the data
+After installing prosma and creating the schema, we then seed the data from the properties.ts file into the database
+

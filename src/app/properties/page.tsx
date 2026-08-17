@@ -14,13 +14,16 @@ import {
   PropertyFilters,
 } from "@/components/property/PropertyFilters";
 
-import { properties } from "@/data/properties";
+import { Property } from "@/types/property";
 
 export default function PropertiesPage() {
   const [mobileFilters, setMobileFilters] = useState(false);
 
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState(searchParams.get("search") ?? "");
 
@@ -39,6 +42,79 @@ export default function PropertiesPage() {
 
     bedrooms: searchParams.get("bedrooms") ?? "",
   });
+
+  useEffect(() => {
+    async function fetchProperties() {
+      try {
+        setLoading(true);
+
+        const response = await fetch("/api/properties");
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch properties");
+        }
+
+        const data = await response.json();
+
+        const transformedProperties: Property[] = data.map(
+          (property: any) => ({
+            id: property.slug,
+
+            title: property.title,
+
+            location: property.location,
+
+            type:
+              property.type.charAt(0) +
+              property.type.slice(1).toLowerCase(),
+
+            listingType:
+              property.listingType === "SALE"
+                ? "For Sale"
+                : "For Rent",
+
+            price: property.price,
+
+            currency: property.currency,
+
+            bedrooms: property.bedrooms,
+
+            bathrooms: property.bathrooms,
+
+            area: property.area,
+
+            yearBuilt: property.yearBuilt,
+
+            description: property.description,
+
+            images: property.images,
+
+            features: property.features,
+
+            featured: property.featured,
+
+            agent: property.agent
+              ? {
+                  name: property.agent.name,
+                  role: property.agent.role,
+                  phone: property.agent.phone,
+                  email: property.agent.email,
+                  image: property.agent.image,
+                }
+              : undefined,
+          }),
+        );
+
+        setProperties(transformedProperties);
+      } catch (error) {
+        console.error("Failed to fetch properties:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchProperties();
+  }, []);
 
   const filteredProperties = useMemo(() => {
     let result = [...properties];
@@ -102,7 +178,7 @@ export default function PropertiesPage() {
     }
 
     return result;
-  }, [search, filters, sort]);
+  }, [properties, search, filters, sort]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -139,9 +215,12 @@ export default function PropertiesPage() {
     const currentQuery = searchParams.toString();
 
     if (newQuery !== currentQuery) {
-      router.replace(newQuery ? `/properties?${newQuery}` : "/properties", {
-        scroll: false,
-      });
+      router.replace(
+        newQuery ? `/properties?${newQuery}` : "/properties",
+        {
+          scroll: false,
+        },
+      );
     }
   }, [search, filters, sort, router, searchParams]);
 
@@ -199,6 +278,7 @@ export default function PropertiesPage() {
                   size={16}
                   className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-black/40"
                 />
+
                 <select
                   value={sort}
                   onChange={(event) => setSort(event.target.value)}
@@ -206,11 +286,17 @@ export default function PropertiesPage() {
                 >
                   <option value="featured">Featured</option>
 
-                  <option value="price-low">Price: Low to high</option>
+                  <option value="price-low">
+                    Price: Low to high
+                  </option>
 
-                  <option value="price-high">Price: High to low</option>
+                  <option value="price-high">
+                    Price: High to low
+                  </option>
 
-                  <option value="largest">Largest first</option>
+                  <option value="largest">
+                    Largest first
+                  </option>
                 </select>
               </div>
             </div>
@@ -231,16 +317,36 @@ export default function PropertiesPage() {
                 <div className="mb-8 flex items-center justify-between">
                   <p className="text-sm text-[var(--muted)]">
                     <span className="font-medium text-black">
-                      {filteredProperties.length}
+                      {loading ? "—" : filteredProperties.length}
                     </span>{" "}
                     properties found
                   </p>
                 </div>
 
-                {filteredProperties.length > 0 ? (
+                {loading ? (
+                  <div className="grid gap-x-6 gap-y-12 md:grid-cols-2">
+                    {[1, 2, 3, 4].map((item) => (
+                      <div
+                        key={item}
+                        className="animate-pulse"
+                      >
+                        <div className="aspect-[4/3] rounded-2xl bg-black/10" />
+
+                        <div className="mt-5 h-4 w-2/3 rounded bg-black/10" />
+
+                        <div className="mt-3 h-4 w-1/3 rounded bg-black/10" />
+
+                        <div className="mt-5 h-5 w-1/2 rounded bg-black/10" />
+                      </div>
+                    ))}
+                  </div>
+                ) : filteredProperties.length > 0 ? (
                   <div className="grid gap-x-6 gap-y-12 md:grid-cols-2">
                     {filteredProperties.map((property) => (
-                      <PropertyCard key={property.id} property={property} />
+                      <PropertyCard
+                        key={property.id}
+                        property={property}
+                      />
                     ))}
                   </div>
                 ) : (

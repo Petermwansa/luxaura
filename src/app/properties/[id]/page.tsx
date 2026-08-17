@@ -9,9 +9,9 @@ import { PropertyGallery } from "@/components/property/PropertyGallery";
 import { PropertyInfo } from "@/components/property/PropertyInfo";
 import { EnquiryCard } from "@/components/property/EnquiryCard";
 import { RelatedProperties } from "@/components/property/RelatedProperties";
-
-import { properties } from "@/data/properties";
 import { AgentCard } from "@/components/property/AgentCard";
+
+import { prisma } from "@/lib/prisma";
 
 interface PropertyPageProps {
   params: Promise<{
@@ -19,9 +19,15 @@ interface PropertyPageProps {
   }>;
 }
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
+  const properties = await prisma.property.findMany({
+    select: {
+      slug: true,
+    },
+  });
+
   return properties.map((property) => ({
-    id: property.id,
+    id: property.slug,
   }));
 }
 
@@ -30,13 +36,59 @@ export default async function PropertyPage({
 }: PropertyPageProps) {
   const { id } = await params;
 
-  const property = properties.find(
-    (property) => property.id === id
-  );
+  const property = await prisma.property.findUnique({
+    where: {
+      slug: id,
+    },
+    include: {
+      agent: true,
+    },
+  });
 
   if (!property) {
     notFound();
   }
+
+  const transformedProperty = {
+    id: property.slug,
+    title: property.title,
+    location: property.location,
+
+    type:
+      property.type.charAt(0) +
+      property.type.slice(1).toLowerCase(),
+
+    listingType:
+      property.listingType === "SALE"
+        ? "For Sale"
+        : "For Rent",
+
+    price: property.price,
+    currency: property.currency,
+
+    bedrooms: property.bedrooms,
+    bathrooms: property.bathrooms,
+    area: property.area,
+
+    yearBuilt: property.yearBuilt,
+
+    description: property.description,
+
+    images: property.images,
+    features: property.features,
+
+    featured: property.featured,
+
+    agent: property.agent
+      ? {
+          name: property.agent.name,
+          role: property.agent.role,
+          phone: property.agent.phone,
+          email: property.agent.email,
+          image: property.agent.image,
+        }
+      : undefined,
+  };
 
   return (
     <>
@@ -45,33 +97,34 @@ export default async function PropertyPage({
       <main className="bg-[#f7f6f2] pt-28 md:pt-32">
         <Container>
           <PropertyGallery
-            images={property.images}
-            title={property.title}
+            images={transformedProperty.images}
+            title={transformedProperty.title}
           />
 
           <div className="grid gap-12 py-12 md:gap-16 md:py-20 lg:grid-cols-[1fr_380px] lg:gap-20 lg:py-24">
-            <PropertyInfo property={property} />
+            <PropertyInfo property={transformedProperty} />
 
-            {property.agent && (
-                <div className="mt-12">
-                    <AgentCard agent={property.agent}/>
-                </div>
+            {transformedProperty.agent && (
+              <div className="mt-12">
+                <AgentCard
+                  agent={transformedProperty.agent}
+                />
+              </div>
             )}
 
             <div className="lg:sticky lg:top-28 lg:self-start">
               <EnquiryCard
-                propertyId={property.id}
-                propertyTitle={property.title}
+                propertyId={transformedProperty.id}
+                propertyTitle={transformedProperty.title}
               />
             </div>
           </div>
         </Container>
 
         <RelatedProperties
-          currentPropertyId={property.id}
+          currentPropertyId={transformedProperty.id}
         />
       </main>
-
       <Footer />
     </>
   );
