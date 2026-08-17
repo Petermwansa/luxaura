@@ -45,7 +45,9 @@ export function EnquiryCard({
   propertyTitle,
 }: EnquiryCardProps) {
   const [saved, setSaved] = useState(false);
-  const [form, setForm] = useState(initialForm);
+
+  const [form, setForm] =
+    useState<FormData>(initialForm);
 
   const [errors, setErrors] =
     useState<FormErrors>({});
@@ -56,7 +58,7 @@ export function EnquiryCard({
 
   function updateField(
     field: keyof FormData,
-    value: string
+    value: string,
   ) {
     setForm((current) => ({
       ...current,
@@ -67,6 +69,11 @@ export function EnquiryCard({
       ...current,
       [field]: undefined,
     }));
+
+    // Remove previous API error when user starts editing again
+    if (status === "error") {
+      setStatus("idle");
+    }
   }
 
   function validate(): FormErrors {
@@ -80,7 +87,7 @@ export function EnquiryCard({
       newErrors.email = "Please enter your email.";
     } else if (
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-        form.email
+        form.email,
       )
     ) {
       newErrors.email =
@@ -95,12 +102,24 @@ export function EnquiryCard({
     if (!form.date) {
       newErrors.date =
         "Please select a preferred date.";
+    } else {
+      const selectedDate = new Date(form.date);
+      const today = new Date();
+
+      today.setHours(0, 0, 0, 0);
+
+      if (selectedDate < today) {
+        newErrors.date =
+          "Please select a future date.";
+      }
     }
 
     if (!form.message.trim()) {
       newErrors.message =
         "Please tell us how we can help.";
-    } else if (form.message.trim().length < 10) {
+    } else if (
+      form.message.trim().length < 10
+    ) {
       newErrors.message =
         "Please enter at least 10 characters.";
     }
@@ -109,7 +128,7 @@ export function EnquiryCard({
   }
 
   async function handleSubmit(
-    event: React.FormEvent<HTMLFormElement>
+    event: React.FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
 
@@ -123,25 +142,42 @@ export function EnquiryCard({
     setStatus("loading");
 
     try {
-      const response = await fetch("/api/inquiries", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        "/api/enquiries",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: form.name.trim(),
+            email: form.email.trim(),
+            phone: form.phone.trim(),
+            date: form.date,
+            message: form.message.trim(),
+            propertyId,
+          }),
         },
-        body: JSON.stringify({
-          ...form,
-          propertyId,
-          propertyTitle,
-        }),
-      });
+      );
 
-      if (!response.ok) {
-        throw new Error("Failed to submit enquiry");
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.error ||
+            "Failed to submit enquiry.",
+        );
       }
 
       setStatus("success");
       setForm(initialForm);
-    } catch {
+      setErrors({});
+    } catch (error) {
+      console.error(
+        "Failed to submit enquiry:",
+        error,
+      );
+
       setStatus("error");
     }
   }
@@ -199,7 +235,11 @@ export function EnquiryCard({
         >
           <Heart
             size={17}
-            fill={saved ? "currentColor" : "none"}
+            fill={
+              saved
+                ? "currentColor"
+                : "none"
+            }
           />
         </button>
       </div>
@@ -227,10 +267,14 @@ export function EnquiryCard({
           label="Your name"
           value={form.name}
           onChange={(e) =>
-            updateField("name", e.target.value)
+            updateField(
+              "name",
+              e.target.value,
+            )
           }
           error={errors.name}
           placeholder="John Doe"
+          disabled={status === "loading"}
         />
 
         <Input
@@ -238,10 +282,14 @@ export function EnquiryCard({
           type="email"
           value={form.email}
           onChange={(e) =>
-            updateField("email", e.target.value)
+            updateField(
+              "email",
+              e.target.value,
+            )
           }
           error={errors.email}
           placeholder="john@example.com"
+          disabled={status === "loading"}
         />
 
         <Input
@@ -249,10 +297,14 @@ export function EnquiryCard({
           type="tel"
           value={form.phone}
           onChange={(e) =>
-            updateField("phone", e.target.value)
+            updateField(
+              "phone",
+              e.target.value,
+            )
           }
           error={errors.phone}
           placeholder="+260 97 000 0000"
+          disabled={status === "loading"}
         />
 
         <Input
@@ -260,9 +312,13 @@ export function EnquiryCard({
           type="date"
           value={form.date}
           onChange={(e) =>
-            updateField("date", e.target.value)
+            updateField(
+              "date",
+              e.target.value,
+            )
           }
           error={errors.date}
+          disabled={status === "loading"}
         />
 
         <div>
@@ -274,9 +330,13 @@ export function EnquiryCard({
             rows={4}
             value={form.message}
             onChange={(e) =>
-              updateField("message", e.target.value)
+              updateField(
+                "message",
+                e.target.value,
+              )
             }
             placeholder="I'm interested in viewing this property..."
+            disabled={status === "loading"}
             className={`w-full resize-none rounded-xl border bg-[#f7f6f2] p-4 text-sm outline-none transition focus:border-black ${
               errors.message
                 ? "border-red-400"
@@ -332,14 +392,18 @@ function Input({
 
       <input
         {...props}
-        className={`h-12 w-full rounded-xl border bg-[#f7f6f2] px-4 text-sm outline-none transition focus:border-black ${
+        className={`h-12 w-full rounded-xl border bg-[#f7f6f2] px-4 text-sm outline-none transition focus:border-black disabled:cursor-not-allowed disabled:opacity-60 ${
           error
             ? "border-red-400"
             : "border-black/10"
         }`}
       />
 
-      {error && <ErrorMessage>{error}</ErrorMessage>}
+      {error && (
+        <ErrorMessage>
+          {error}
+        </ErrorMessage>
+      )}
     </div>
   );
 }

@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+
     const {
       name,
       email,
@@ -10,9 +12,9 @@ export async function POST(request: Request) {
       date,
       message,
       propertyId,
-      propertyTitle,
     } = body;
 
+    // Basic validation
     if (
       !name ||
       !email ||
@@ -23,46 +25,70 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json(
         {
-          error: "Missing required fields.",
+          success: false,
+          error: "All fields are required.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    if (
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-    ) {
+    // Find the property using its slug
+    const property = await prisma.property.findUnique({
+      where: {
+        slug: propertyId,
+      },
+      include: {
+        agent: true,
+      },
+    });
+
+    if (!property) {
       return NextResponse.json(
         {
-          error: "Invalid email address.",
+          success: false,
+          error: "Property not found.",
         },
-        { status: 400 }
+        { status: 404 },
       );
     }
 
-    console.log("NEW PROPERTY ENQUIRY", {
-      name,
-      email,
-      phone,
-      date,
-      message,
-      propertyId,
-      propertyTitle,
+    // Create enquiry
+    const enquiry = await prisma.enquiry.create({
+      data: {
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        date: new Date(date),
+        message: message.trim(),
+
+        propertyId: property.id,
+
+        agentId: property.agentId ?? undefined,
+
+        status: "PENDING",
+      },
     });
 
     return NextResponse.json(
       {
         success: true,
-        message: "Enquiry received successfully.",
+        message: "Enquiry submitted successfully.",
+        enquiry: {
+          id: enquiry.id,
+          status: enquiry.status,
+        },
       },
-      { status: 200 }
+      { status: 201 },
     );
-  } catch {
+  } catch (error) {
+    console.error("ENQUIRY ERROR:", error);
+
     return NextResponse.json(
       {
-        error: "Unable to process enquiry.",
+        success: false,
+        error: "Something went wrong while submitting your enquiry.",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

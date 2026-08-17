@@ -5,13 +5,48 @@ import { motion } from "motion/react";
 import { ArrowDown } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
+import { useEffect, useState } from "react";
 
 export function Hero() {
+
+  const [heroImage, setHeroImage] = useState(
+    "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c"
+  );
+
+  useEffect(() => {
+    async function fetchHeroProperty() {
+      try {
+        const response = await fetch("/api/properties");
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch properties");
+        }
+
+        const properties = await response.json();
+
+        const featuredProperty = properties.find(
+          (property: any) => property.featured === true
+        );
+
+        if (featuredProperty?.images?.length > 0) {
+          setHeroImage(featuredProperty.images[0]);
+        }
+      } catch (error) {
+        console.error(
+          "Failed to fetch hero property:",
+          error
+        );
+      }
+    }
+
+    fetchHeroProperty();
+  }, []);
+
   return (
     <section className="relative min-h-screen overflow-hidden bg-black text-white">
       <div className="absolute inset-0">
         <Image
-          src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c"
+          src={heroImage}
           alt="Luxury modern home"
           fill
           priority
