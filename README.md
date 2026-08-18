@@ -24,5 +24,6 @@ After installing prosma and creating the schema, we then seed the data from the 
 
 # Do Authentication to protect the routes
 `npm install @clerk/nextjs`
+
 I used Clerk to handle the authentication of the users
 I started with the authentication of the admins.

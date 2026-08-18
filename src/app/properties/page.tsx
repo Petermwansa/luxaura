@@ -56,54 +56,50 @@ export default function PropertiesPage() {
 
         const data = await response.json();
 
-        const transformedProperties: Property[] = data.map(
-          (property: any) => ({
-            id: property.slug,
+        const transformedProperties: Property[] = data.map((property: any) => ({
+          id: property.id,
 
-            title: property.title,
+          slug: property.slug,
 
-            location: property.location,
+          title: property.title,
 
-            type:
-              property.type.charAt(0) +
-              property.type.slice(1).toLowerCase(),
+          location: property.location,
 
-            listingType:
-              property.listingType === "SALE"
-                ? "For Sale"
-                : "For Rent",
+          type: property.type.charAt(0) + property.type.slice(1).toLowerCase(),
 
-            price: property.price,
+          listingType:
+            property.listingType === "SALE" ? "For Sale" : "For Rent",
 
-            currency: property.currency,
+          price: property.price,
 
-            bedrooms: property.bedrooms,
+          currency: property.currency,
 
-            bathrooms: property.bathrooms,
+          bedrooms: property.bedrooms,
 
-            area: property.area,
+          bathrooms: property.bathrooms,
 
-            yearBuilt: property.yearBuilt,
+          area: property.area,
 
-            description: property.description,
+          yearBuilt: property.yearBuilt,
 
-            images: property.images,
+          description: property.description,
 
-            features: property.features,
+          images: property.images,
 
-            featured: property.featured,
+          features: property.features,
 
-            agent: property.agent
-              ? {
-                  name: property.agent.name,
-                  role: property.agent.role,
-                  phone: property.agent.phone,
-                  email: property.agent.email,
-                  image: property.agent.image,
-                }
-              : undefined,
-          }),
-        );
+          featured: property.featured,
+
+          agent: property.agent
+            ? {
+                name: property.agent.name,
+                role: property.agent.role,
+                phone: property.agent.phone,
+                email: property.agent.email,
+                image: property.agent.image,
+              }
+            : undefined,
+        }));
 
         setProperties(transformedProperties);
       } catch (error) {
@@ -215,12 +211,9 @@ export default function PropertiesPage() {
     const currentQuery = searchParams.toString();
 
     if (newQuery !== currentQuery) {
-      router.replace(
-        newQuery ? `/properties?${newQuery}` : "/properties",
-        {
-          scroll: false,
-        },
-      );
+      router.replace(newQuery ? `/properties?${newQuery}` : "/properties", {
+        scroll: false,
+      });
     }
   }, [search, filters, sort, router, searchParams]);
 
@@ -286,17 +279,11 @@ export default function PropertiesPage() {
                 >
                   <option value="featured">Featured</option>
 
-                  <option value="price-low">
-                    Price: Low to high
-                  </option>
+                  <option value="price-low">Price: Low to high</option>
 
-                  <option value="price-high">
-                    Price: High to low
-                  </option>
+                  <option value="price-high">Price: High to low</option>
 
-                  <option value="largest">
-                    Largest first
-                  </option>
+                  <option value="largest">Largest first</option>
                 </select>
               </div>
             </div>
@@ -326,10 +313,7 @@ export default function PropertiesPage() {
                 {loading ? (
                   <div className="grid gap-x-6 gap-y-12 md:grid-cols-2">
                     {[1, 2, 3, 4].map((item) => (
-                      <div
-                        key={item}
-                        className="animate-pulse"
-                      >
+                      <div key={item} className="animate-pulse">
                         <div className="aspect-[4/3] rounded-2xl bg-black/10" />
 
                         <div className="mt-5 h-4 w-2/3 rounded bg-black/10" />
@@ -343,10 +327,7 @@ export default function PropertiesPage() {
                 ) : filteredProperties.length > 0 ? (
                   <div className="grid gap-x-6 gap-y-12 md:grid-cols-2">
                     {filteredProperties.map((property) => (
-                      <PropertyCard
-                        key={property.id}
-                        property={property}
-                      />
+                      <PropertyCard key={property.id} property={property} />
                     ))}
                   </div>
                 ) : (

@@ -34,8 +34,20 @@ export async function generateStaticParams() {
 export default async function PropertyPage({
   params,
 }: PropertyPageProps) {
+  /*
+   * `id` is actually the slug from the URL.
+   *
+   * Example:
+   *
+   * /properties/modern-hillside-villa
+   *
+   * id = "modern-hillside-villa"
+   */
   const { id } = await params;
 
+  /*
+   * Find the property using its slug.
+   */
   const property = await prisma.property.findUnique({
     where: {
       slug: id,
@@ -49,9 +61,21 @@ export default async function PropertyPage({
     notFound();
   }
 
+  /*
+   * IMPORTANT:
+   *
+   * property.id  -> MongoDB ObjectId
+   * property.slug -> URL slug
+   *
+   * We keep both.
+   */
   const transformedProperty = {
-    id: property.slug,
+    id: property.id,
+
+    slug: property.slug,
+
     title: property.title,
+
     location: property.location,
 
     type:
@@ -64,10 +88,13 @@ export default async function PropertyPage({
         : "For Rent",
 
     price: property.price,
+
     currency: property.currency,
 
     bedrooms: property.bedrooms,
+
     bathrooms: property.bathrooms,
+
     area: property.area,
 
     yearBuilt: property.yearBuilt,
@@ -75,6 +102,7 @@ export default async function PropertyPage({
     description: property.description,
 
     images: property.images,
+
     features: property.features,
 
     featured: property.featured,
@@ -102,7 +130,9 @@ export default async function PropertyPage({
           />
 
           <div className="grid gap-12 py-12 md:gap-16 md:py-20 lg:grid-cols-[1fr_380px] lg:gap-20 lg:py-24">
-            <PropertyInfo property={transformedProperty} />
+            <PropertyInfo
+              property={transformedProperty}
+            />
 
             {transformedProperty.agent && (
               <div className="mt-12">
@@ -114,17 +144,18 @@ export default async function PropertyPage({
 
             <div className="lg:sticky lg:top-28 lg:self-start">
               <EnquiryCard
-                propertyId={transformedProperty.id}
-                propertyTitle={transformedProperty.title}
+                propertyId={property.id}
+                propertyTitle={property.title}
               />
             </div>
           </div>
         </Container>
 
         <RelatedProperties
-          currentPropertyId={transformedProperty.id}
+          currentPropertyId={property.id}
         />
       </main>
+
       <Footer />
     </>
   );

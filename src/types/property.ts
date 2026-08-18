@@ -17,6 +17,7 @@ export interface Agent {
 
 export interface Property {
   id: string;
+  slug: string;
 
   title: string;
   location: string;

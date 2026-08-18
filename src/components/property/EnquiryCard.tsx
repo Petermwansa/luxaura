@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import {
   AlertCircle,
   Check,
@@ -12,6 +13,17 @@ import {
 import { Button } from "@/components/ui/Button";
 
 interface EnquiryCardProps {
+  /**
+   * IMPORTANT:
+   * This must be the MongoDB/Prisma property ID,
+   * NOT the property slug.
+   *
+   * Example:
+   * "68a123456789abcdef123456"
+   *
+   * NOT:
+   * "modern-hillside-villa"
+   */
   propertyId: string;
   propertyTitle: string;
 }
@@ -44,7 +56,11 @@ export function EnquiryCard({
   propertyId,
   propertyTitle,
 }: EnquiryCardProps) {
+  const { isSignedIn, isLoaded } = useAuth();
+
   const [saved, setSaved] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] =
+    useState(false);
 
   const [form, setForm] =
     useState<FormData>(initialForm);
@@ -56,6 +72,189 @@ export function EnquiryCard({
     "idle" | "loading" | "success" | "error"
   >("idle");
 
+  /*
+   * Check if this property is already
+   * saved by the current user.
+   */
+  useEffect(() => {
+    async function checkFavorite() {
+      if (!isLoaded) {
+        return;
+      }
+
+      if (!isSignedIn) {
+        setSaved(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          "/api/favorites",
+          {
+            method: "GET",
+            cache: "no-store",
+          },
+        );
+
+        if (!response.ok) {
+          console.error(
+            "Failed to fetch favorites.",
+          );
+          return;
+        }
+
+        const data = await response.json();
+
+        const favorites =
+          data.favorites ?? data;
+
+        const isFavorite = favorites.some(
+          (favorite: {
+            propertyId?: string;
+            property?: {
+              id?: string;
+            };
+          }) => {
+            return (
+              favorite.propertyId ===
+                propertyId ||
+              favorite.property?.id ===
+                propertyId
+            );
+          },
+        );
+
+        setSaved(isFavorite);
+      } catch (error) {
+        console.error(
+          "Failed to check favorite:",
+          error,
+        );
+      }
+    }
+
+    checkFavorite();
+  }, [
+    isLoaded,
+    isSignedIn,
+    propertyId,
+  ]);
+
+  /*
+   * Add/remove favorite.
+   */
+  async function handleFavorite() {
+    if (!isLoaded) {
+      return;
+    }
+
+    /*
+     * User must be signed in.
+     */
+    if (!isSignedIn) {
+      const redirectUrl =
+        `${window.location.pathname}` +
+        `${window.location.search}`;
+
+      window.location.href =
+        `/sign-in?redirect_url=${encodeURIComponent(
+          redirectUrl,
+        )}`;
+
+      return;
+    }
+
+    /*
+     * Prevent duplicate requests.
+     */
+    if (favoriteLoading) {
+      return;
+    }
+
+    /*
+     * Make sure we actually have a property ID.
+     */
+    if (!propertyId) {
+      console.error(
+        "Cannot update favorite: propertyId is missing.",
+      );
+      return;
+    }
+
+    setFavoriteLoading(true);
+
+    try {
+      /*
+       * REMOVE FAVORITE
+       */
+      if (saved) {
+        const response = await fetch(
+          `/api/favorites/${propertyId}`,
+          {
+            method: "DELETE",
+          },
+        );
+
+        const data =
+          await response.json().catch(
+            () => null,
+          );
+
+        if (!response.ok) {
+          throw new Error(
+            data?.error ||
+              "Failed to remove favorite.",
+          );
+        }
+
+        setSaved(false);
+      }
+
+      /*
+       * ADD FAVORITE
+       */
+      else {
+        const response = await fetch(
+          "/api/favorites",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              propertyId,
+            }),
+          },
+        );
+
+        const data =
+          await response.json().catch(
+            () => null,
+          );
+
+        if (!response.ok) {
+          throw new Error(
+            data?.error ||
+              "Failed to add favorite.",
+          );
+        }
+
+        setSaved(true);
+      }
+    } catch (error) {
+      console.error(
+        "Failed to update favorite:",
+        error,
+      );
+    } finally {
+      setFavoriteLoading(false);
+    }
+  }
+
+  /*
+   * Update form fields.
+   */
   function updateField(
     field: keyof FormData,
     value: string,
@@ -70,21 +269,25 @@ export function EnquiryCard({
       [field]: undefined,
     }));
 
-    // Remove previous API error when user starts editing again
     if (status === "error") {
       setStatus("idle");
     }
   }
 
+  /*
+   * Validate enquiry form.
+   */
   function validate(): FormErrors {
     const newErrors: FormErrors = {};
 
     if (!form.name.trim()) {
-      newErrors.name = "Please enter your name.";
+      newErrors.name =
+        "Please enter your name.";
     }
 
     if (!form.email.trim()) {
-      newErrors.email = "Please enter your email.";
+      newErrors.email =
+        "Please enter your email.";
     } else if (
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
         form.email,
@@ -103,7 +306,10 @@ export function EnquiryCard({
       newErrors.date =
         "Please select a preferred date.";
     } else {
-      const selectedDate = new Date(form.date);
+      const selectedDate = new Date(
+        form.date,
+      );
+
       const today = new Date();
 
       today.setHours(0, 0, 0, 0);
@@ -127,14 +333,21 @@ export function EnquiryCard({
     return newErrors;
   }
 
+  /*
+   * Submit enquiry.
+   */
   async function handleSubmit(
     event: React.FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
 
-    const validationErrors = validate();
+    const validationErrors =
+      validate();
 
-    if (Object.keys(validationErrors).length > 0) {
+    if (
+      Object.keys(validationErrors).length >
+      0
+    ) {
       setErrors(validationErrors);
       return;
     }
@@ -147,22 +360,28 @@ export function EnquiryCard({
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":
+              "application/json",
           },
           body: JSON.stringify({
             name: form.name.trim(),
             email: form.email.trim(),
             phone: form.phone.trim(),
             date: form.date,
-            message: form.message.trim(),
+            message:
+              form.message.trim(),
             propertyId,
           }),
         },
       );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
-      if (!response.ok || !data.success) {
+      if (
+        !response.ok ||
+        !data.success
+      ) {
         throw new Error(
           data.error ||
             "Failed to submit enquiry.",
@@ -182,6 +401,9 @@ export function EnquiryCard({
     }
   }
 
+  /*
+   * SUCCESS STATE
+   */
   if (status === "success") {
     return (
       <aside className="rounded-2xl bg-white p-7 shadow-xl shadow-black/5">
@@ -196,12 +418,16 @@ export function EnquiryCard({
 
           <p className="mt-3 max-w-xs text-sm leading-6 text-[var(--muted)]">
             Thank you for your interest in{" "}
-            {propertyTitle}. Our property consultant
-            will contact you shortly.
+            {propertyTitle}. Our property
+            consultant will contact you
+            shortly.
           </p>
 
           <button
-            onClick={() => setStatus("idle")}
+            type="button"
+            onClick={() =>
+              setStatus("idle")
+            }
             className="mt-7 text-sm underline underline-offset-4"
           >
             Send another enquiry
@@ -213,6 +439,7 @@ export function EnquiryCard({
 
   return (
     <aside className="rounded-2xl bg-white p-6 shadow-xl shadow-black/5 md:p-7">
+      {/* HEADER */}
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs uppercase tracking-widest text-black/40">
@@ -224,26 +451,50 @@ export function EnquiryCard({
           </h2>
         </div>
 
+        {/* FAVORITE BUTTON */}
         <button
           type="button"
-          onClick={() => setSaved(!saved)}
+          onClick={handleFavorite}
+          disabled={
+            favoriteLoading ||
+            !isLoaded
+          }
+          aria-label={
+            saved
+              ? "Remove from favorites"
+              : "Add to favorites"
+          }
+          aria-pressed={saved}
           className={`flex h-10 w-10 items-center justify-center rounded-full border transition ${
             saved
               ? "border-black bg-black text-white"
-              : "border-black/10"
+              : "border-black/10 hover:border-black"
+          } ${
+            favoriteLoading ||
+            !isLoaded
+              ? "cursor-not-allowed opacity-60"
+              : ""
           }`}
         >
-          <Heart
-            size={17}
-            fill={
-              saved
-                ? "currentColor"
-                : "none"
-            }
-          />
+          {favoriteLoading ? (
+            <Loader2
+              size={17}
+              className="animate-spin"
+            />
+          ) : (
+            <Heart
+              size={17}
+              fill={
+                saved
+                  ? "currentColor"
+                  : "none"
+              }
+            />
+          )}
         </button>
       </div>
 
+      {/* ERROR */}
       {status === "error" && (
         <div className="mt-6 flex gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           <AlertCircle
@@ -252,12 +503,14 @@ export function EnquiryCard({
           />
 
           <p>
-            Something went wrong while sending your
-            request. Please try again.
+            Something went wrong while
+            sending your request. Please
+            try again.
           </p>
         </div>
       )}
 
+      {/* FORM */}
       <form
         onSubmit={handleSubmit}
         className="mt-8 space-y-4"
@@ -274,7 +527,9 @@ export function EnquiryCard({
           }
           error={errors.name}
           placeholder="John Doe"
-          disabled={status === "loading"}
+          disabled={
+            status === "loading"
+          }
         />
 
         <Input
@@ -289,7 +544,9 @@ export function EnquiryCard({
           }
           error={errors.email}
           placeholder="john@example.com"
-          disabled={status === "loading"}
+          disabled={
+            status === "loading"
+          }
         />
 
         <Input
@@ -304,7 +561,9 @@ export function EnquiryCard({
           }
           error={errors.phone}
           placeholder="+260 97 000 0000"
-          disabled={status === "loading"}
+          disabled={
+            status === "loading"
+          }
         />
 
         <Input
@@ -318,7 +577,9 @@ export function EnquiryCard({
             )
           }
           error={errors.date}
-          disabled={status === "loading"}
+          disabled={
+            status === "loading"
+          }
         />
 
         <div>
@@ -336,7 +597,9 @@ export function EnquiryCard({
               )
             }
             placeholder="I'm interested in viewing this property..."
-            disabled={status === "loading"}
+            disabled={
+              status === "loading"
+            }
             className={`w-full resize-none rounded-xl border bg-[#f7f6f2] p-4 text-sm outline-none transition focus:border-black ${
               errors.message
                 ? "border-red-400"
@@ -354,7 +617,9 @@ export function EnquiryCard({
         <Button
           type="submit"
           className="w-full"
-          disabled={status === "loading"}
+          disabled={
+            status === "loading"
+          }
         >
           {status === "loading" ? (
             <>
@@ -376,6 +641,9 @@ export function EnquiryCard({
   );
 }
 
+/*
+ * INPUT
+ */
 function Input({
   label,
   error,
@@ -408,6 +676,9 @@ function Input({
   );
 }
 
+/*
+ * ERROR MESSAGE
+ */
 function ErrorMessage({
   children,
 }: {

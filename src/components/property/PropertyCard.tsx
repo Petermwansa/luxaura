@@ -9,8 +9,11 @@ import {
   Heart,
   MapPin,
   Ruler,
+  Loader2,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { useEffect, useState } from "react";
+
 import { Property } from "@/types/property";
 
 interface PropertyCardProps {
@@ -20,6 +23,100 @@ interface PropertyCardProps {
 export function PropertyCard({
   property,
 }: PropertyCardProps) {
+  const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    async function checkFavorite() {
+      try {
+        const response = await fetch("/api/favorites");
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+
+        const favorites = data.favorites ?? data;
+
+        const isFavorite = favorites.some(
+          (favorite: any) =>
+            favorite.propertyId === property.id ||
+            favorite.property?.id === property.id,
+        );
+
+        setSaved(isFavorite);
+      } catch (error) {
+        console.error(
+          "Failed to check favorite:",
+          error,
+        );
+      }
+    }
+
+    checkFavorite();
+  }, [property.id]);
+
+  async function handleFavorite(
+    event: React.MouseEvent<HTMLButtonElement>,
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (loading) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      if (saved) {
+        const response = await fetch(
+          `/api/favorites?propertyId=${property.id}`,
+          {
+            method: "DELETE",
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            "Failed to remove favorite.",
+          );
+        }
+
+        setSaved(false);
+      } else {
+        const response = await fetch(
+          "/api/favorites",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              propertyId: property.id,
+            }),
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            "Failed to add favorite.",
+          );
+        }
+
+        setSaved(true);
+      }
+    } catch (error) {
+      console.error(
+        "Failed to update favorite:",
+        error,
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <motion.article
       layout
@@ -28,7 +125,7 @@ export function PropertyCard({
       transition={{ duration: 0.4 }}
     >
       <Link
-        href={`/properties/${property.id}`}
+        href={`/properties/${property.slug}`}
         className="group block"
       >
         <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-black">
@@ -46,14 +143,39 @@ export function PropertyCard({
             </span>
 
             <button
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-              }}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 backdrop-blur transition hover:bg-white"
-              aria-label="Save property"
+              type="button"
+              onClick={handleFavorite}
+              disabled={loading}
+              className={`flex h-10 w-10 items-center justify-center rounded-full backdrop-blur transition ${
+                saved
+                  ? "bg-black text-white"
+                  : "bg-white/90 text-black hover:bg-white"
+              } ${
+                loading
+                  ? "cursor-not-allowed opacity-70"
+                  : ""
+              }`}
+              aria-label={
+                saved
+                  ? "Remove from favorites"
+                  : "Save property"
+              }
             >
-              <Heart size={17} />
+              {loading ? (
+                <Loader2
+                  size={17}
+                  className="animate-spin"
+                />
+              ) : (
+                <Heart
+                  size={17}
+                  fill={
+                    saved
+                      ? "currentColor"
+                      : "none"
+                  }
+                />
+              )}
             </button>
           </div>
 
@@ -76,9 +198,12 @@ export function PropertyCard({
             </div>
 
             <p className="whitespace-nowrap text-sm font-semibold">
-              {property.currency === "USD" && "$"}
+              {property.currency === "USD" &&
+                "$"}
               {property.price.toLocaleString()}
-              {property.listingType === "For Rent" && (
+
+              {property.listingType ===
+                "For Rent" && (
                 <span className="font-normal text-[var(--muted)]">
                   /mo
                 </span>
