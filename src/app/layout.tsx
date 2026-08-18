@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import "./globals.css";
+import { ClerkProvider } from "@clerk/nextjs";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -26,12 +27,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${cormorant.variable} ${manrope.variable}`}
-      >
-        {children}
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en">
+        <body
+          className={`${cormorant.variable} ${manrope.variable}`}
+        >
+          {children}
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
