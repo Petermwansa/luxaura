@@ -1,8 +1,21 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth";
 
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
+  const authorization = await requireAdmin();
+
+  if (!authorization.authorized) {
+    return NextResponse.json(
+      {
+        error: authorization.error,
+      },
+      {
+        status: authorization.status,
+      },
+    );
+  }
   try {
     const enquiries = await prisma.enquiry.findMany({
       include: {
@@ -38,10 +51,7 @@ export async function GET() {
       enquiries,
     });
   } catch (error) {
-    console.error(
-      "ADMIN ENQUIRIES ERROR:",
-      error,
-    );
+    console.error("ADMIN ENQUIRIES ERROR:", error);
 
     return NextResponse.json(
       {

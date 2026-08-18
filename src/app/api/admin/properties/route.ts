@@ -1,8 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-
+import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
+  const authorization = await requireAdmin();
+
+if (!authorization.authorized) {
+  return NextResponse.json(
+    {
+      error: authorization.error,
+    },
+    {
+      status: authorization.status,
+    },
+  );
+}
+
   try {
     const properties = await prisma.property.findMany({
       include: {
@@ -29,6 +42,19 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const authorization = await requireAdmin();
+
+if (!authorization.authorized) {
+  return NextResponse.json(
+    {
+      error: authorization.error,
+    },
+    {
+      status: authorization.status,
+    },
+  );
+}
+
   try {
     const body = await request.json();
 

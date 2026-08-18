@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth";
 
 import { prisma } from "@/lib/prisma";
 
@@ -9,9 +10,23 @@ interface RouteProps {
 }
 
 export async function GET(
+
   _request: NextRequest,
   { params }: RouteProps,
 ) {
+const authorization = await requireAdmin();
+
+if (!authorization.authorized) {
+  return NextResponse.json(
+    {
+      error: authorization.error,
+    },
+    {
+      status: authorization.status,
+    },
+  );
+}
+  
   try {
     const { id } = await params;
 
@@ -55,6 +70,19 @@ export async function PUT(
   { params }: RouteProps,
 ) {
   try {
+    const authorization = await requireAdmin();
+
+if (!authorization.authorized) {
+  return NextResponse.json(
+    {
+      error: authorization.error,
+    },
+    {
+      status: authorization.status,
+    },
+  );
+}
+
     const { id } = await params;
 
     const body = await request.json();
@@ -181,7 +209,20 @@ export async function DELETE(
   _request: NextRequest,
   { params }: RouteProps,
 ) {
+  const authorization = await requireAdmin();
+
+if (!authorization.authorized) {
+  return NextResponse.json(
+    {
+      error: authorization.error,
+    },
+    {
+      status: authorization.status,
+    },
+  );
+}
   try {
+
     const { id } = await params;
 
     const property = await prisma.property.findUnique({

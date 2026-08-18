@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
+import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 interface RouteProps {
@@ -8,10 +8,19 @@ interface RouteProps {
   }>;
 }
 
-export async function GET(
-  _request: NextRequest,
-  { params }: RouteProps,
-) {
+export async function GET(_request: NextRequest, { params }: RouteProps) {
+  const authorization = await requireAdmin();
+
+  if (!authorization.authorized) {
+    return NextResponse.json(
+      {
+        error: authorization.error,
+      },
+      {
+        status: authorization.status,
+      },
+    );
+  }
   try {
     const { id } = await params;
 
@@ -55,22 +64,25 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: RouteProps,
-) {
+export async function PUT(request: NextRequest, { params }: RouteProps) {
+  const authorization = await requireAdmin();
+
+  if (!authorization.authorized) {
+    return NextResponse.json(
+      {
+        error: authorization.error,
+      },
+      {
+        status: authorization.status,
+      },
+    );
+  }
   try {
     const { id } = await params;
 
     const body = await request.json();
 
-    const {
-      name,
-      role,
-      phone,
-      email,
-      image,
-    } = body;
+    const { name, role, phone, email, image } = body;
 
     const existingAgent = await prisma.agent.findUnique({
       where: {
@@ -138,10 +150,19 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  _request: NextRequest,
-  { params }: RouteProps,
-) {
+export async function DELETE(_request: NextRequest, { params }: RouteProps) {
+  const authorization = await requireAdmin();
+
+  if (!authorization.authorized) {
+    return NextResponse.json(
+      {
+        error: authorization.error,
+      },
+      {
+        status: authorization.status,
+      },
+    );
+  }
   try {
     const { id } = await params;
 
@@ -162,12 +183,11 @@ export async function DELETE(
       );
     }
 
-    const assignedProperties =
-      await prisma.property.count({
-        where: {
-          agentId: id,
-        },
-      });
+    const assignedProperties = await prisma.property.count({
+      where: {
+        agentId: id,
+      },
+    });
 
     if (assignedProperties > 0) {
       return NextResponse.json(

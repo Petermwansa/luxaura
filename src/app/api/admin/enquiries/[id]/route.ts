@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth";
 
 import { prisma } from "@/lib/prisma";
 
@@ -22,6 +23,18 @@ export async function PATCH(
   request: Request,
   { params }: RouteContext,
 ) {
+  const authorization = await requireAdmin();
+
+if (!authorization.authorized) {
+  return NextResponse.json(
+    {
+      error: authorization.error,
+    },
+    {
+      status: authorization.status,
+    },
+  );
+}
   try {
     const { id } = await params;
 
