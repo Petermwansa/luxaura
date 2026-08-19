@@ -7,11 +7,12 @@ import {
   Bath,
   BedDouble,
   Heart,
+  Loader2,
   MapPin,
   Ruler,
-  Loader2,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { useAuth } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 
 import { Property } from "@/types/property";
@@ -23,13 +24,26 @@ interface PropertyCardProps {
 export function PropertyCard({
   property,
 }: PropertyCardProps) {
+  const { isSignedIn } = useAuth();
+
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  /*
+   * Check whether this property is already
+   * in the user's favorites.
+   */
   useEffect(() => {
     async function checkFavorite() {
+      if (!isSignedIn) {
+        setSaved(false);
+        return;
+      }
+
       try {
-        const response = await fetch("/api/favorites");
+        const response = await fetch(
+          "/api/favorites",
+        );
 
         if (!response.ok) {
           return;
@@ -37,12 +51,15 @@ export function PropertyCard({
 
         const data = await response.json();
 
-        const favorites = data.favorites ?? data;
+        const favorites = Array.isArray(data)
+          ? data
+          : data.favorites ?? [];
 
         const isFavorite = favorites.some(
-          (favorite: any) =>
-            favorite.propertyId === property.id ||
-            favorite.property?.id === property.id,
+          (favorite: {
+            propertyId: string;
+          }) =>
+            favorite.propertyId === property.id,
         );
 
         setSaved(isFavorite);
@@ -55,13 +72,24 @@ export function PropertyCard({
     }
 
     checkFavorite();
-  }, [property.id]);
+  }, [isSignedIn, property.id]);
 
+  /*
+   * Add or remove favorite.
+   */
   async function handleFavorite(
     event: React.MouseEvent<HTMLButtonElement>,
   ) {
     event.preventDefault();
     event.stopPropagation();
+
+    if (!isSignedIn) {
+      window.location.href = `/sign-in?redirect_url=${encodeURIComponent(
+        window.location.pathname,
+      )}`;
+
+      return;
+    }
 
     if (loading) {
       return;
@@ -70,22 +98,45 @@ export function PropertyCard({
     setLoading(true);
 
     try {
+      /*
+       * Remove favorite
+       */
       if (saved) {
         const response = await fetch(
-          `/api/favorites?propertyId=${property.id}`,
+          `/api/favorites/${property.id}`,
           {
             method: "DELETE",
           },
         );
 
         if (!response.ok) {
+          const data = await response.json();
+
           throw new Error(
-            "Failed to remove favorite.",
+            data.error ||
+              "Failed to remove favorite.",
           );
         }
 
         setSaved(false);
+
+        /*
+         * Tell the page that this favorite was removed.
+         *
+         * The favorites page listens for this event
+         * and removes the property from its local list.
+         */
+        window.dispatchEvent(
+          new CustomEvent("favoriteRemoved", {
+            detail: {
+              propertyId: property.id,
+            },
+          }),
+        );
       } else {
+        /*
+         * Add favorite
+         */
         const response = await fetch(
           "/api/favorites",
           {
@@ -100,8 +151,11 @@ export function PropertyCard({
         );
 
         if (!response.ok) {
+          const data = await response.json();
+
           throw new Error(
-            "Failed to add favorite.",
+            data.error ||
+              "Failed to add favorite.",
           );
         }
 
@@ -142,6 +196,7 @@ export function PropertyCard({
               {property.listingType}
             </span>
 
+            {/* Favorite button */}
             <button
               type="button"
               onClick={handleFavorite}
@@ -149,10 +204,10 @@ export function PropertyCard({
               className={`flex h-10 w-10 items-center justify-center rounded-full backdrop-blur transition ${
                 saved
                   ? "bg-black text-white"
-                  : "bg-white/90 text-black hover:bg-white"
+                  : "bg-white/90 hover:bg-white"
               } ${
                 loading
-                  ? "cursor-not-allowed opacity-70"
+                  ? "cursor-not-allowed opacity-60"
                   : ""
               }`}
               aria-label={
@@ -200,6 +255,7 @@ export function PropertyCard({
             <p className="whitespace-nowrap text-sm font-semibold">
               {property.currency === "USD" &&
                 "$"}
+
               {property.price.toLocaleString()}
 
               {property.listingType ===

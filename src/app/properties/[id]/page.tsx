@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-
 import { Container } from "@/components/ui/Container";
 
 import { PropertyGallery } from "@/components/property/PropertyGallery";
@@ -35,18 +34,16 @@ export default async function PropertyPage({
   params,
 }: PropertyPageProps) {
   /*
-   * `id` is actually the slug from the URL.
+   * The URL parameter is called `id`,
+   * but it actually contains the property's slug.
    *
    * Example:
-   *
    * /properties/modern-hillside-villa
-   *
-   * id = "modern-hillside-villa"
    */
   const { id } = await params;
 
   /*
-   * Find the property using its slug.
+   * Find the property using the URL slug.
    */
   const property = await prisma.property.findUnique({
     where: {
@@ -62,20 +59,16 @@ export default async function PropertyPage({
   }
 
   /*
-   * IMPORTANT:
+   * Keep the database ID and slug separate.
    *
-   * property.id  -> MongoDB ObjectId
+   * property.id   -> MongoDB ObjectId
    * property.slug -> URL slug
-   *
-   * We keep both.
    */
   const transformedProperty = {
     id: property.id,
-
     slug: property.slug,
 
     title: property.title,
-
     location: property.location,
 
     type:
@@ -88,21 +81,16 @@ export default async function PropertyPage({
         : "For Rent",
 
     price: property.price,
-
     currency: property.currency,
 
     bedrooms: property.bedrooms,
-
     bathrooms: property.bathrooms,
-
     area: property.area,
-
     yearBuilt: property.yearBuilt,
 
     description: property.description,
 
     images: property.images,
-
     features: property.features,
 
     featured: property.featured,
@@ -130,9 +118,7 @@ export default async function PropertyPage({
           />
 
           <div className="grid gap-12 py-12 md:gap-16 md:py-20 lg:grid-cols-[1fr_380px] lg:gap-20 lg:py-24">
-            <PropertyInfo
-              property={transformedProperty}
-            />
+            <PropertyInfo property={transformedProperty} />
 
             {transformedProperty.agent && (
               <div className="mt-12">
@@ -144,15 +130,15 @@ export default async function PropertyPage({
 
             <div className="lg:sticky lg:top-28 lg:self-start">
               <EnquiryCard
-                propertyId={property.id}
-                propertyTitle={property.title}
+                propertyId={transformedProperty.id}
+                propertyTitle={transformedProperty.title}
               />
             </div>
           </div>
         </Container>
 
         <RelatedProperties
-          currentPropertyId={property.id}
+          currentPropertyId={transformedProperty.id}
         />
       </main>
 

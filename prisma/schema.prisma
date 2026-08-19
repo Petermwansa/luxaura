@@ -71,6 +71,7 @@ model User {
   name      String
   email     String     @unique
   image     String?
+  phone     String?
 
   favorites Favorite[]
 
